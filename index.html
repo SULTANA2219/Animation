@@ -3,37 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Scroll-Driven Animation</title>
+    <title>3D Water Bottle Scroll Experience</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
-
         body {
             font-family: system-ui, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: #0b0f19;
+            color: #ffffff;
             overflow-x: hidden;
         }
-
-        /* Smooth scroll behavior for standard navigation */
-        html {
-            scroll-behavior: smooth;
+        /* Fixed canvas container behind the text layers */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none; /* Allows clicking text/buttons through the canvas */
         }
-
-        /* Large spacing sections to allow scrolling */
+        /* Scrollable content overlays */
         section {
+            position: relative;
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
-            padding: 2rem;
-            text-align: center;
+            padding: 10%;
+            z-index: 2;
         }
+        .content {
+            max-width: 500px;
+        }
+        .right {
+            margin-left: auto;
+        }
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            color: #38bdf8;
+        }
+        p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- Include Three.js via CDN -->
+    <script src="https://cloudflare.com"></script>
+</head>
+<body>
 
+    <!-- 3D Viewport background -->
+    <div id="canvas-container"></div>
+
+    <!-- Scrolling Sections -->
+    <section>
+        <div class="content">
+            <h1>Pure Hydration.</h1>
+            <p>Designed for athletes, built for the earth. Scroll down to explore the engineering behind the perfect vacuum-sealed insulated bottle.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="content right">
+            <h1>Ergonomic Cap.</h1>
+            <p>Leak-proof lid with an integrated stainless steel carry loop. Engineered to pour smoothly without splashing.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h1>Double-Wall Armor.</h1>
+            <p>Keeps beverages icy cold for 24 hours or steaming hot for 12 hours. Premium pro-grade stainless steel sweat-free exterior.</p>
+        </div>
+    </section>
+
+    <script>
+        // --- 1. Setup Three.js Scene ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 6;
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // --- 2. Add Lights ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.5);
+        dirLight.position.set(5, 5, 5);
+        scene.add(dirLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(-5, -3, 2);
+        scene.add(pointLight);
+
+        // --- 3. Build a Procedural 3D Bottle ---
+        const bottleGroup = new THREE.Group();
+
+        // Main Body Material
+        const bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.2,
+            metalness: 0.8
+        });
+
+        // Bottle Base Cylinder
+        const bodyGeo = new THREE.CylinderGeometry(0.6, 0.6, 2.2, 32);
+        const bottleBody = new THREE.Mesh(bodyGeo, bodyMat);
+        bottleGroup.add(bottleBody);
+
+        // Bottle Neck
+        const neckGeo = new THREE.CylinderGeometry(0.35, 0.6, 0.4, 32);
+        const bottleNeck = new THREE.Mesh(neckGeo, bodyMat);
+        bottleNeck.position.y = 1.3;
+        bottleGroup.add(bottleNeck);
+
+        // Bottle Cap (Metal Ring + Matte top)
+        const capMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4 });
+        const capGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.3, 32);
+        const bottleCap = new THREE.Mesh(capGeo, capMat);
+        bottleCap.position.y = 1.65;
+        bottleGroup.add(bottleCap);
+
+        scene.add(bottleGroup);
+
+        // Default layout positioning
+        bottleGroup.position.x = 1.2; 
+
+        // --- 4. Scroll Animation Mapping ---
+        let scrollPercent = 0;
+
+        window.addEventListener('scroll', () => {
+            // Calculate how far down the user has scrolled (0 to 1)
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            scrollPercent = scrollTop / docHeight;
+        });
+
+        // --- 5. Animation Render Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Interpolate target transforms based on scroll percentage
+            // Section 1 -> Section 2 -> Section 3 transitions smoothly
+            
+            // 1. Rotation (Roll bottle around as you scroll)
+            bottleGroup.rotation.y = scrollPercent * Math.PI * 3;
+            bottleGroup.rotation.z = Math.sin(scrollPercent * Math.PI) * 0.3;
+
+            // 2. Position X (Move left and right across sections)
+            const targetX = 1.2 - (scrollPercent * 2.4); // Moves from right (1.2) to left (-1.2)
+            bottleGroup.position.x += (targetX - bottleGroup.position.x) * 0.1; // Smooth easing acceleration
+
+            // 3. Subtle floating ambient animation so it looks alive when idle
+            bottleGroup.position.y = Math.sin(Date.now() * 0.0015) * 0.08;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- 6. Responsive Window Resize ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
         h1 {
             font-size: 3.5rem;
             margin-bottom: 1rem;
